@@ -1,0 +1,12 @@
+<resources>
+    <string name="app_name">BambuTagScanner</string>
+    <string name="uid_text">UID: %1$s</string>
+    <string name="details_text">UID: %1$s\nFilament Type: %2$s\nColor: %3$s</string>
+    <string name="create_new_dump">Create New Dump</string>
+    <string name="view_existing_dumps">View Existing Dumps</string>
+    <string name="details_placeholder">Details will appear here</string>
+    <string name="export">Export</string>
+    <string name="waiting_for_tag">Waiting for tag…</string>
+    <string name="dump_name">Dump Name</string>
+    <string name="delete">Delete</string>
+</resources>
