@@ -10,6 +10,10 @@ Bambu Tag Scanner is an Android application designed to read Bambu filament NFC 
 - **Color Recognition**: Extract and interpret RGB values from NFC tag data, mapping them to predefined color names.
 - **Export Functionality**: Package dumps and associated keys into a ZIP file for easy sharing.
 
+## Screenshot
+
+![Image](https://github.com/user-attachments/assets/811900a8-2d15-451b-bb2d-7d38858e476b)
+
 ## Getting Started
 
 ### Prerequisites
