@@ -74,13 +74,6 @@ class MainActivity : Activity() {
 
         // Set click listener for the "Create Dump" button
         createDumpButton.setOnClickListener {
-            isWaitingForTag = true // Set the flag to indicate waiting for an NFC tag
-            waitingScreen.visibility = View.VISIBLE // Show the waiting screen
-            enableForegroundDispatch() // Enable NFC foreground dispatch
-        }
-
-        // Set click listener for the "Create Dump" button
-        createDumpButton.setOnClickListener {
             // Check NFC is enabled
             if (isNfcEnabled()) {
                 isWaitingForTag = true // Set the flag to indicate waiting for an NFC tag
@@ -216,7 +209,7 @@ class MainActivity : Activity() {
         colorSwatch.setBackgroundColor(getColorFromName(colorName)) // Update color swatch based on color name
 
         // Construct a sanitized file name for the dump
-        val fileName = "$uidHex-${sanitizeString(filamentType)}-$colorName.bin" // Include UID, filament type, and color name
+        val fileName = "${uidHex}-${sanitizeString("${filamentType}-${colorName}")}.bin" // Include UID, filament type, and color name
         Log.d("MainActivity", "Constructed file name: $fileName") // Log the file name
 
         // Build the complete dump data, including keys and tag data
@@ -335,7 +328,7 @@ class MainActivity : Activity() {
 
         // Map of predefined colors and their RGB values
         val predefinedColors = mapOf(
-            "Jade_White" to Color.rgb(255, 255, 255),
+            "Jade White" to Color.rgb(255, 255, 255),
             "Beige" to Color.rgb(247, 230, 222),
             "Gold" to Color.rgb(228, 189, 104),
             "Silver" to Color.rgb(166, 169, 170),
@@ -347,14 +340,14 @@ class MainActivity : Activity() {
             "Pink" to Color.rgb(245, 90, 116),
             "Orange" to Color.rgb(255, 106, 19),
             "Yellow" to Color.rgb(244, 238, 42),
-            "Bambu_Green" to Color.rgb(0, 174, 66),
-            "Mistletoe_Green" to Color.rgb(63, 142, 67),
+            "Bambu Green" to Color.rgb(0, 174, 66),
+            "Mistletoe Green" to Color.rgb(63, 142, 67),
             "Cyan" to Color.rgb(0, 134, 214),
             "Blue" to Color.rgb(10, 41, 137),
             "Purple" to Color.rgb(94, 67, 183),
-            "Blue_Gray" to Color.rgb(91, 101, 121),
-            "Light_Gray" to Color.rgb(209, 211, 213),
-            "Dark_Gray" to Color.rgb(84, 84, 84),
+            "Blue Gray" to Color.rgb(91, 101, 121),
+            "Light Gray" to Color.rgb(209, 211, 213),
+            "Dark Gray" to Color.rgb(84, 84, 84),
             "Black" to Color.rgb(0, 0, 0)
         )
 
@@ -376,7 +369,7 @@ class MainActivity : Activity() {
     private fun getColorFromName(colorName: String): Int {
         // Return the RGB value of the color based on its name
         return when (colorName.lowercase()) {
-            "jade_white" -> Color.rgb(255, 255, 255)
+            "jade white" -> Color.rgb(255, 255, 255)
             "beige" -> Color.rgb(247, 230, 222)
             "gold" -> Color.rgb(228, 189, 104)
             "silver" -> Color.rgb(166, 169, 170)
@@ -388,14 +381,14 @@ class MainActivity : Activity() {
             "pink" -> Color.rgb(245, 90, 116)
             "orange" -> Color.rgb(255, 106, 19)
             "yellow" -> Color.rgb(244, 238, 42)
-            "bambu_green" -> Color.rgb(0, 174, 66)
-            "mistletoe_green" -> Color.rgb(63, 142, 67)
+            "bambu green" -> Color.rgb(0, 174, 66)
+            "mistletoe green" -> Color.rgb(63, 142, 67)
             "cyan" -> Color.rgb(0, 134, 214)
             "blue" -> Color.rgb(10, 41, 137)
             "purple" -> Color.rgb(94, 67, 183)
-            "blue_gray" -> Color.rgb(91, 101, 121)
-            "light_gray" -> Color.rgb(209, 211, 213)
-            "dark_gray" -> Color.rgb(84, 84, 84)
+            "blue gray" -> Color.rgb(91, 101, 121)
+            "light gray" -> Color.rgb(209, 211, 213)
+            "dark gray" -> Color.rgb(84, 84, 84)
             "black" -> Color.rgb(0, 0, 0)
             else -> Color.rgb(128, 128, 128) // Default to medium gray for unknown colors
         }
@@ -652,7 +645,8 @@ class MainActivity : Activity() {
             // Locate the required files in internal storage
             val dumpFile = File(filesDir, dumpFileName)
             val keyFile = File(filesDir, keyFileName)
-            if (!dumpFile.exists() || !keyFile.exists()) {
+            val rawKeyFile = File(filesDir, rawKeyFileName)
+            if (!dumpFile.exists() || !keyFile.exists() || !rawKeyFile.exists()) {
                 throw IllegalStateException("Required files not found") // Throw error if files are missing
             }
 

@@ -1,13 +1,13 @@
-# Bambu Tag Scanner
+# BambuTagScanner
 
-Bambu Tag Scanner is an Android application designed to read Bambu filament NFC tags, extract data, and manage dumps of the extracted content.
+BambuTagScanner is an Android application designed to read Bambu filament NFC tags, extract data, and manage dumps of the extracted content.
 
 ## Features
 
-- **NFC Tag Scanning**: Detect and process NFC tags, specifically Bambu filament tags.
+- **Bambu Tag Scanning**: Detect and process Bambu filament tags.
 - **Data Dump Creation**: Extract and save tag data, including sector-specific keys.
 - **View and Manage Dumps**: Browse, view details, and delete saved dumps.
-- **Color Recognition**: Extract and interpret RGB values from NFC tag data, mapping them to predefined color names.
+- **Colour Recognition**: Extract and interpret RGB values from Bambu tag data, mapping them to predefined colour names.
 - **Export Functionality**: Package dumps and associated keys into a ZIP file for easy sharing.
 
 ## Screenshot
@@ -18,7 +18,7 @@ Bambu Tag Scanner is an Android application designed to read Bambu filament NFC 
 
 ### Prerequisites
 
-- Android 13 device with NFC capability.
+- Android 13+ device with NFC capability.
 
 ### Installation
 
@@ -28,7 +28,7 @@ Bambu Tag Scanner is an Android application designed to read Bambu filament NFC 
 
 ## Usage
 
-### NFC Tag Scanning
+### Bambu Tag Scanning
 1. Ensure NFC is enabled on your device.
 2. Tap the "CREATE NEW DUMP" button to start scanning.
 3. Bring a Bambu tag close to your device.
@@ -36,7 +36,7 @@ Bambu Tag Scanner is an Android application designed to read Bambu filament NFC 
 
 ### View Dumps
 1. Tap the "VIEW EXISTING DUMPS" button to toggle the list of saved dumps.
-2. Select a dump to view its details, including extracted tag data and color.
+2. Select a dump to view its details, including extracted tag data and colour.
 
 ### Export Dumps
 1. After selecting a dump, tap the "EXPORT" button.
@@ -60,7 +60,7 @@ Bambu Tag Scanner is an Android application designed to read Bambu filament NFC 
 ### Key Derivation
 - Uses HKDF with SHA-256 to derive sector-specific keys from the tag UID.
 
-### Color Recognition
+### Colour Recognition
 - RGB values extracted from tag data are matched against the Bambu Labs hex colour table for available PLA colours. If there isn't an exact match, it maps to the nearest colour using Euclidean distance.
 
 ### Export Mechanism
