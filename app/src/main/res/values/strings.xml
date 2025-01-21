@@ -9,4 +9,5 @@
     <string name="waiting_for_tag">Waiting for tag…</string>
     <string name="dump_name">Dump Name</string>
     <string name="delete">Delete</string>
+    <string name="write_dump">Write Dump</string>
 </resources>
