@@ -1,18 +1,19 @@
 # BambuTagScanner
 
-BambuTagScanner is an Android application designed to read Bambu filament NFC tags, extract data, and manage dumps of the extracted content.
+BambuTagScanner is an Android application designed to read Bambu filament NFC tags, extract data, manage dumps and write new tags.
 
 ## Features
 
 - **Bambu Tag Scanning**: Detect and process Bambu filament tags.
 - **Data Dump Creation**: Extract and save tag data, including sector-specific keys.
 - **View and Manage Dumps**: Browse, view details, and delete saved dumps.
+- **Write Dumps**: Write dumps to blank "magic" tags.
 - **Colour Recognition**: Extract and interpret RGB values from Bambu tag data, mapping them to predefined colour names.
 - **Export Functionality**: Package dumps and associated keys into a ZIP file for easy sharing.
 
 ## Screenshot
 
-![Image](https://github.com/user-attachments/assets/811900a8-2d15-451b-bb2d-7d38858e476b)
+![Image](https://github.com/user-attachments/assets/bdd6cbb2-a61b-43b1-a5e4-948905d99dd5)
 
 ## Getting Started
 
@@ -37,6 +38,13 @@ BambuTagScanner is an Android application designed to read Bambu filament NFC ta
 ### View Dumps
 1. Tap the "VIEW EXISTING DUMPS" button to toggle the list of saved dumps.
 2. Select a dump to view its details, including extracted tag data and colour.
+
+### Write Dumps
+1. Tap the "WRITE DUMP" button to begin the write process.
+2. Bring a blank "magic" gen 2 tag close to your device.
+3. The app will write the selected dump to the tag.
+
+**IMPORTANT** - only **gen 2/direct write** tags will work, and they **MUST** be **FUID/OTW** tags or the AMS will brick the tag on read.
 
 ### Export Dumps
 1. After selecting a dump, tap the "EXPORT" button.

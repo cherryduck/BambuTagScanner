@@ -45,6 +45,13 @@
             android:layout_height="50dp"
             android:layout_marginTop="8dp"
             android:background="#000000" />
+			
+		<Button
+			android:id="@+id/writeTagButton"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:text="@string/write_dump" />
+
 
         <Button
             android:id="@+id/exportButton"
@@ -54,13 +61,4 @@
             android:text="@string/export"
             android:visibility="gone" />
     </LinearLayout>
-
-    <!-- Overlay for waiting screen -->
-    <FrameLayout
-        android:id="@+id/waitingScreen"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:background="#CC000000"
-        android:visibility="gone">
-    </FrameLayout>
 </FrameLayout>
