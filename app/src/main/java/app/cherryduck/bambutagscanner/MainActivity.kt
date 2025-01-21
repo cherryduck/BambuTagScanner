@@ -36,6 +36,7 @@ class MainActivity : Activity() {
     private lateinit var dumpsListView: ListView // ListView to display available dumps
     private lateinit var detailsText: TextView // TextView for displaying details about a selected dump
     private lateinit var colorSwatch: View // A visual indicator, potentially for status or selection
+    private lateinit var writeTagButton: Button // Button for writing tag
     private lateinit var exportButton: Button // Button for exporting data
 
     // Declare variables for managing the data and state
@@ -44,19 +45,12 @@ class MainActivity : Activity() {
     private var currentDumpFileName: String? = null // Name of the currently selected dump file
     private var currentDumpContent: ByteArray? = null // Content of the currently selected dump file
     private var isWaitingForTag = false // Boolean to track whether the app is waiting for an NFC tag
-
-    // Declare a variable for the waiting screen view
-    private lateinit var waitingScreen: View // View displayed while waiting for NFC tag interaction
+    private var waitingForTagDialog: AlertDialog? = null // Variable to hold the reference to the AlertDialog used for "waiting for tag" functionality
+    private var isWriteMode = false // Track whether we are in write mode
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-
-        // Inflate the waiting screen layout
-        val rootLayout = findViewById<FrameLayout>(R.id.rootLayout) // Root layout of the activity
-        waitingScreen = layoutInflater.inflate(R.layout.waiting_screen, rootLayout, false) // Inflate the waiting screen view
-        rootLayout.addView(waitingScreen) // Add the waiting screen to the root layout
-        waitingScreen.visibility = View.GONE // Initially hide the waiting screen
 
         // Initialize the NFC adapter
         nfcAdapter = NfcAdapter.getDefaultAdapter(this)
@@ -67,18 +61,17 @@ class MainActivity : Activity() {
         dumpsListView = findViewById(R.id.dumpsListView) // ListView to display dumps
         detailsText = findViewById(R.id.detailsText) // TextView for displaying details of a selected dump
         colorSwatch = findViewById(R.id.colorSwatch) // View for displaying a color swatch
+        writeTagButton = findViewById(R.id.writeTagButton) // Button to write the current dump
         exportButton = findViewById(R.id.exportButton) // Button for exporting the current dump
-
-        // Initially hide the export button
-        exportButton.isVisible = false
+        updateButtonVisibility() // Initially hide export and write buttons
 
         // Set click listener for the "Create Dump" button
         createDumpButton.setOnClickListener {
             // Check NFC is enabled
             if (isNfcEnabled()) {
                 isWaitingForTag = true // Set the flag to indicate waiting for an NFC tag
-                waitingScreen.visibility = View.VISIBLE // Show the waiting screen
                 enableForegroundDispatch() // Enable NFC foreground dispatch
+                showWaitingForTagDialog() // Show the cancelable dialog
             } else {
                 showNfcDisabledDialog() // Warn that NFC is not enabled
             }
@@ -87,6 +80,27 @@ class MainActivity : Activity() {
         // Set click listener for the "View Dumps" button
         viewDumpsButton.setOnClickListener {
             toggleExistingDumps() // Toggle the visibility of the dumps list
+        }
+
+        // Enable the write button only when a dump is loaded
+        writeTagButton.setOnClickListener {
+            if (currentDumpFileName != null && currentDumpContent != null) {
+                val baseName = currentDumpFileName!!.substringBeforeLast(".")
+                // Show confirmation dialog before writing
+                AlertDialog.Builder(this)
+                    .setTitle("Confirm Write")
+                    .setMessage("Are you sure you want to write the dump '${baseName}' to a tag?")
+                    .setPositiveButton("Yes") { _, _ ->
+                        isWriteMode = true // Set the flag to indicate write mode
+                        isWaitingForTag = true // Set the flag to indicate waiting for an NFC tag
+                        enableForegroundDispatch() // Enable NFC foreground dispatch
+                        showWaitingForTagDialog() // Show the cancelable dialog
+                    }
+                    .setNegativeButton("No", null)
+                    .show()
+            } else {
+                Toast.makeText(this, "No dump loaded to write.", Toast.LENGTH_SHORT).show()
+            }
         }
 
         // Set click listener for the "Export" button
@@ -115,6 +129,49 @@ class MainActivity : Activity() {
         disableForegroundDispatch() // Disable NFC foreground dispatch when the activity is paused
     }
 
+    private fun updateButtonVisibility() {
+        // Check whether the export and write buttons should be visible
+        val showHide = currentDumpFileName != null && currentDumpContent != null
+        exportButton.isVisible = showHide
+        writeTagButton.isVisible = showHide
+    }
+
+    private fun showWaitingForTagDialog() {
+        // Create an AlertDialog builder for constructing the dialog
+        val builder = AlertDialog.Builder(this)
+
+        // Set the title and message of the dialog
+        builder.setTitle("Waiting for Tag") // Dialog title
+            .setMessage("Please present a tag to proceed.") // Dialog message
+
+            // Prevent accidental dismissal
+            .setCancelable(false)
+
+            // Add a "Cancel" button to the dialog that allows the user to stop waiting for a tag
+            .setNegativeButton("Cancel") { _, _ ->
+                // Call the function to cancel waiting for a tag
+                cancelWaitingForTag()
+            }
+
+        // Create the dialog from the builder and assign it to the class variable
+        waitingForTagDialog = builder.create()
+
+        // Show the dialog to the user
+        waitingForTagDialog?.show()
+    }
+    private fun cancelWaitingForTag() {
+        // Set the flag to false, indicating that the app is no longer waiting for a tag
+        isWaitingForTag = false
+
+        // Disable NFC foreground dispatch to stop intercepting NFC intents
+        disableForegroundDispatch()
+
+        // Dismiss the dialog if it is currently showing
+        waitingForTagDialog?.dismiss()
+
+        // Show a toast message to inform the user that the process has been canceled
+        Toast.makeText(this, "Waiting for tag canceled.", Toast.LENGTH_SHORT).show()
+    }
     private fun isNfcEnabled(): Boolean {
         // Use the NFC adapter to determine if NFC is enabled
         return nfcAdapter.isEnabled
@@ -164,7 +221,7 @@ class MainActivity : Activity() {
 
         if (isWaitingForTag) {
             isWaitingForTag = false // Reset the flag as we are no longer waiting for a tag
-            waitingScreen.visibility = View.GONE // Hide the waiting screen
+            waitingForTagDialog?.dismiss() // Dismiss the dialog when a tag is detected
 
             try {
                 // Extract the NFC tag from the intent
@@ -173,7 +230,15 @@ class MainActivity : Activity() {
                 if (tag != null) {
                     // Log the detected tag ID in hexadecimal format
                     Log.d("MainActivity", "Tag detected: ${tag.id.joinToString("") { "%02X".format(it) }}")
-                    handleTag(tag) // Process the detected tag
+                    // Check if we are writing or reading
+                    if (isWriteMode) {
+                        currentDumpContent?.let { dumpData ->
+                            writeToMagicTag(tag, dumpData)
+                        } ?: throw IllegalStateException("No dump data available to write.")
+                        isWriteMode = false // Reset write mode
+                    } else {
+                        handleTag(tag) // Proceed with reading the tag
+                    }
                 } else {
                     // Log an error if no tag is found in the intent
                     Log.e("MainActivity", "No NFC tag detected in the intent")
@@ -222,10 +287,9 @@ class MainActivity : Activity() {
         // Refresh the list of existing dumps to include the new one
         displayExistingDumps()
 
-        // Make the export button visible
-        exportButton.isVisible = true
         currentDumpFileName = fileName // Update the current dump file name
         currentDumpContent = fullDump // Update the current dump content
+        updateButtonVisibility() // Update visibility to reflect the loaded dump
 
         // Show a toast message indicating the dump was successfully created
         Toast.makeText(this, "Dump created: $fileName", Toast.LENGTH_SHORT).show()
@@ -284,6 +348,8 @@ class MainActivity : Activity() {
                 // Authenticate the sector using the provided key
                 val authenticated = mifare.authenticateSectorWithKeyA(sector, keys[sector])
                 if (!authenticated) {
+                    // Show a Toast message if authentication fails for a sector
+                    Toast.makeText( this, "Authentication failed", Toast.LENGTH_SHORT).show()
                     // Throw an exception if authentication fails for a sector
                     throw IllegalArgumentException("Authentication failed for sector $sector")
                 }
@@ -546,11 +612,12 @@ class MainActivity : Activity() {
             // Update the UI with the parsed details
             detailsText.text = getString(R.string.details_text, fileName.split("-")[0], filamentType, colorName)
             colorSwatch.setBackgroundColor(getColorFromName(colorName)) // Set the color swatch background
-            exportButton.isVisible = true // Make the export button visible
 
             // Update the current dump file and content references
             currentDumpFileName = fileName
             currentDumpContent = content
+
+            updateButtonVisibility() // Update button visibility
 
             // Show a success toast message
             Toast.makeText(this, "Loaded dump: $fileName", Toast.LENGTH_SHORT).show()
@@ -560,7 +627,7 @@ class MainActivity : Activity() {
             currentDumpContent = null // Clear the current content reference
             detailsText.text = "" // Clear the details text
             colorSwatch.setBackgroundColor(Color.TRANSPARENT) // Reset the color swatch
-            exportButton.isVisible = false // Hide the export button
+            updateButtonVisibility() // Update button visibility
 
             // Show an error toast message
             Toast.makeText(this, "Error loading dump: ${e.message}", Toast.LENGTH_SHORT).show()
@@ -613,11 +680,13 @@ class MainActivity : Activity() {
                         currentDumpContent = null // Clear the current content reference
                         detailsText.text = "" // Clear the details text
                         colorSwatch.setBackgroundColor(Color.TRANSPARENT) // Reset the color swatch
-                        exportButton.isVisible = false // Hide the export button
                     }
 
                     // Refresh the list of dumps and update the adapter
                     displayExistingDumps()
+
+                    // Update button visibility after deletion
+                    updateButtonVisibility()
                 } else {
                     // Show a message if no matching files were found
                     Toast.makeText(this, "No files found matching $baseName", Toast.LENGTH_SHORT).show()
@@ -632,6 +701,71 @@ class MainActivity : Activity() {
 
             // Log the error details for debugging purposes
             Log.e("MainActivity", "Error deleting files: ${e.message}", e)
+        }
+    }
+
+    private fun writeToMagicTag(tag: Tag, dumpData: ByteArray) {
+        val mifare = MifareClassic.get(tag)
+
+        // Validate the tag type and UID length before proceeding
+        if (mifare == null) {
+            Toast.makeText(this, "Tag is not a MIFARE Classic tag.", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val uid = tag.id
+        if (uid == null || uid.size != 4) {
+            Toast.makeText(this, "Tag does not have a 4-byte UID.", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        if (mifare.type != MifareClassic.TYPE_CLASSIC || mifare.size != MifareClassic.SIZE_1K) {
+            Toast.makeText(this, "Tag is not a MIFARE Classic 1K tag.", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        mifare.use {
+            try {
+                mifare.connect()
+
+                // Use the default key for authentication
+                val defaultKey = MifareClassic.KEY_DEFAULT
+
+                // Authenticate sector 0
+                if (!mifare.authenticateSectorWithKeyA(0, defaultKey)) {
+                    throw IllegalArgumentException("Failed to authenticate sector 0 for writing.")
+                }
+
+                // Write block 0 (UID and metadata)
+                val block0Data = dumpData.copyOfRange(0, 16)
+                mifare.writeBlock(0, block0Data)
+
+                // Disconnect and reconnect to ensure tag state is reset
+                mifare.close()
+
+                // Reinitialize the MIFARE Classic object and reconnect
+                mifare.connect()
+
+                // Write the remaining dump data to the tag
+                for (sector in 0 until mifare.sectorCount) {
+                    // Authenticate each sector with the default key
+                    if (!mifare.authenticateSectorWithKeyA(sector, defaultKey)) {
+                        throw IllegalArgumentException("Failed to authenticate sector $sector for writing.")
+                    }
+
+                    // Write each block within the sector
+                    for (block in 0 until mifare.getBlockCountInSector(sector)) {
+                        val blockIndex = mifare.sectorToBlock(sector) + block
+                        val blockData = dumpData.copyOfRange(blockIndex * 16, (blockIndex + 1) * 16)
+                        mifare.writeBlock(blockIndex, blockData)
+                    }
+                }
+
+                Toast.makeText(this, "Dump written successfully to the magic tag.", Toast.LENGTH_SHORT).show()
+            } catch (e: Exception) {
+                Log.e("MainActivity", "${e.message}", e)
+                Toast.makeText(this, "${e.message}", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
