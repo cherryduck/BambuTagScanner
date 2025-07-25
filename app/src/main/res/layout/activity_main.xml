@@ -24,6 +24,13 @@
             android:text="@string/view_existing_dumps"
             android:layout_marginTop="8dp" />
 
+        <Button
+            android:id="@+id/importDumpButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/import_dump"
+            android:layout_marginTop="8dp" />
+
         <ListView
             android:id="@+id/dumpsListView"
             android:layout_width="match_parent"
@@ -51,7 +58,6 @@
 			android:layout_width="wrap_content"
 			android:layout_height="wrap_content"
 			android:text="@string/write_dump" />
-
 
         <Button
             android:id="@+id/exportButton"
