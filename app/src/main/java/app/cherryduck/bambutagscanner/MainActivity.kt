@@ -38,6 +38,7 @@ class MainActivity : Activity() {
     private lateinit var colorSwatch: View // A visual indicator, potentially for status or selection
     private lateinit var writeTagButton: Button // Button for writing tag
     private lateinit var exportButton: Button // Button for exporting data
+    private lateinit var importDumpButton: Button // Button for importing dump files
 
     // Declare variables for managing the data and state
     private var dumpsListAdapter: ArrayAdapter<String>? = null // Adapter for populating the dumpsListView
@@ -47,6 +48,9 @@ class MainActivity : Activity() {
     private var isWaitingForTag = false // Boolean to track whether the app is waiting for an NFC tag
     private var waitingForTagDialog: AlertDialog? = null // Variable to hold the reference to the AlertDialog used for "waiting for tag" functionality
     private var isWriteMode = false // Track whether we are in write mode
+
+    // Constants for file picker requests
+    private val importDumpRequestCode = 1001 // Request code for importing .bin file
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -63,6 +67,8 @@ class MainActivity : Activity() {
         colorSwatch = findViewById(R.id.colorSwatch) // View for displaying a color swatch
         writeTagButton = findViewById(R.id.writeTagButton) // Button to write the current dump
         exportButton = findViewById(R.id.exportButton) // Button for exporting the current dump
+        importDumpButton = findViewById(R.id.importDumpButton) // Button for importing a dump
+
         updateButtonVisibility() // Initially hide export and write buttons
 
         // Set click listener for the "Create Dump" button
@@ -106,6 +112,11 @@ class MainActivity : Activity() {
         // Set click listener for the "Export" button
         exportButton.setOnClickListener {
             exportCurrentDump() // Export the currently loaded dump
+        }
+
+        // Set click listener for the "Import Dump" button
+        importDumpButton.setOnClickListener {
+            openBinFilePicker() // Start the import flow for selecting a .bin file
         }
 
         // Set item click listener for the dumps list
@@ -528,7 +539,7 @@ class MainActivity : Activity() {
 
             // Write all padding (00s) after the keys
             val totalPaddingSize = keys.sumOf { it.size }
-            val padding = ByteArray(totalPaddingSize) { 0x00 }
+            val padding = ByteArray(totalPaddingSize)
             outputStream.write(padding)
         }
 
@@ -773,70 +784,117 @@ class MainActivity : Activity() {
         try {
             // Ensure a dump is currently loaded
             val dumpFileName = currentDumpFileName ?: throw IllegalStateException("No dump loaded")
-            val keyFileName = dumpFileName.replace(".bin", ".dic") // Derive the key file name
-            val rawKeyFileName = dumpFileName.replace(".bin", "-key.bin") // Derive the raw key file name
+            val keyFileName = dumpFileName.replace(".bin", ".dic")
+            val rawKeyFileName = dumpFileName.replace(".bin", "-key.bin")
 
-            // Locate the required files in internal storage
+            // Locate files in internal storage
             val dumpFile = File(filesDir, dumpFileName)
             val keyFile = File(filesDir, keyFileName)
             val rawKeyFile = File(filesDir, rawKeyFileName)
-            if (!dumpFile.exists() || !keyFile.exists() || !rawKeyFile.exists()) {
-                throw IllegalStateException("Required files not found") // Throw error if files are missing
+
+            // Collect only the files that exist
+            val filesToExport = mutableListOf<Pair<File, String>>()
+            if (dumpFile.exists()) filesToExport.add(dumpFile to dumpFileName)
+            if (keyFile.exists()) filesToExport.add(keyFile to keyFileName)
+            if (rawKeyFile.exists()) filesToExport.add(rawKeyFile to rawKeyFileName)
+
+            if (filesToExport.isEmpty()) {
+                throw IllegalStateException("No files found to export.")
             }
 
-            // Create a ZIP file containing the dump and key files
-            val zipFile = createZipFile(dumpFileName, keyFileName, rawKeyFileName)
+            // Create a ZIP with only available files
+            val zipFile = createZipFileSelective(dumpFileName, filesToExport)
 
-            // Generate a content URI for the ZIP file using FileProvider
+            // Share as before
             val uri = FileProvider.getUriForFile(
                 this,
-                "app.cherryduck.bambutagscanner.fileprovider", // FileProvider authority
+                "app.cherryduck.bambutagscanner.fileprovider",
                 zipFile
             )
 
-            // Create an intent to share the ZIP file
             val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                type = "application/zip" // Set the MIME type to ZIP
-                putExtra(Intent.EXTRA_STREAM, uri) // Attach the ZIP file URI
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION) // Grant temporary read permission
+                type = "application/zip"
+                putExtra(Intent.EXTRA_STREAM, uri)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
 
-            // Launch the share intent with a chooser dialog
             startActivity(Intent.createChooser(shareIntent, "Export Dump and Keys"))
         } catch (e: Exception) {
-            // Handle errors during export
             Toast.makeText(this, "Error exporting dump: ${e.message}", Toast.LENGTH_SHORT).show()
-            Log.e("MainActivity", "Error in exportCurrentDump: ${e.message}", e) // Log the error
+            Log.e("MainActivity", "Error in exportCurrentDump: ${e.message}", e)
         }
     }
 
-    private fun createZipFile(dumpFileName: String, keyFileName: String, rawKeyFileName: String): File {
+    private fun createZipFileSelective(dumpFileName: String, filesToExport: List<Pair<File, String>>): File {
         // Derive the ZIP file name from the dump file name
         val zipFileName = dumpFileName.replace(".bin", ".zip")
-        val zipFile = File(cacheDir, zipFileName) // Create the ZIP file in the cache directory
+        val zipFile = File(cacheDir, zipFileName)
 
         // Use a ZipOutputStream to create the ZIP file
         ZipOutputStream(zipFile.outputStream()).use { zipOut ->
-            // List of files to be added to the ZIP archive, with their respective entry names
-            val filesToZip = listOf(
-                File(filesDir, dumpFileName) to dumpFileName, // Preserve the original dump file name
-                File(filesDir, keyFileName) to keyFileName,  // Preserve the original key file name
-                File(filesDir, rawKeyFileName) to rawKeyFileName  // Preserve the original raw key file name
-            )
-
             // Iterate through the files and add them to the ZIP
-            for ((file, zipEntryName) in filesToZip) {
-                zipOut.putNextEntry(ZipEntry(zipEntryName)) // Create a new entry in the ZIP
-                file.inputStream().use { it.copyTo(zipOut) } // Copy the file contents to the ZIP
-                zipOut.closeEntry() // Close the current entry
+            for ((file, zipEntryName) in filesToExport) {
+                zipOut.putNextEntry(ZipEntry(zipEntryName))
+                file.inputStream().use { it.copyTo(zipOut) }
+                zipOut.closeEntry()
             }
         }
-
         // Log the success of ZIP file creation
         Log.d("MainActivity", "ZIP file created: ${zipFile.absolutePath}")
-
-        // Return the created ZIP file
         return zipFile
+    }
+
+    // Start file picker for .bin file import
+    private fun openBinFilePicker() {
+        // Restrict to files with .bin extension using MIME and EXTRA_MIME_TYPES
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "application/octet-stream"
+            putExtra(Intent.EXTRA_MIME_TYPES, arrayOf("application/octet-stream"))
+        }
+        startActivityForResult(intent, importDumpRequestCode)
+    }
+
+    // Handle the result from file pickers
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (resultCode != RESULT_OK || data?.data == null) return
+        when (requestCode) {
+            importDumpRequestCode -> importBinFile(data.data!!)
+        }
+    }
+
+    // Import a .bin file and prompt for the matching -key.bin file
+    private fun importBinFile(uri: android.net.Uri) {
+        try {
+            // Read the .bin file bytes from the selected URI
+            val binBytes = contentResolver.openInputStream(uri)?.readBytes() ?: throw Exception("Failed to read .bin file")
+
+            // Parse filament type and color name for naming
+            val (filamentType, colorName) = parseTagDetails(binBytes)
+
+            // Extract UID for naming
+            val uidBytes = binBytes.copyOfRange(0, 4)
+            val uidHex = uidBytes.joinToString("") { "%02X".format(it) }
+            val baseName = "${uidHex}-${sanitizeString("${filamentType}-${colorName}")}"
+
+            // Save the .bin file to internal storage with the app's naming convention
+            val fileName = "$baseName.bin"
+            saveInternalDump(fileName, binBytes)
+
+            // Refresh the dumps list
+            displayExistingDumps()
+
+            // Show a confirmation toast
+            Toast.makeText(this, "Import successful: $fileName", Toast.LENGTH_SHORT).show()
+
+            // Automatically load the imported dump details into the UI
+            loadDumpDetails(fileName)
+
+        } catch (e: Exception) {
+            Toast.makeText(this, "Error importing dump: ${e.message}", Toast.LENGTH_SHORT).show()
+            Log.e("MainActivity", "Import error", e)
+        }
     }
 
 }
