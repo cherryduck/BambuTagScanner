@@ -14,7 +14,7 @@ BambuTagScanner is an Android application designed to read Bambu filament NFC ta
 
 ## Screenshot
 
-![Image](https://github.com/user-attachments/assets/5f04ef67-ab94-4aff-aa37-44cf7bc8ba3d)
+![Image](https://github.com/user-attachments/assets/deb97fc6-e77c-473c-a3ef-32f0b78a599c)
 
 ## Getting Started
 
@@ -43,7 +43,7 @@ BambuTagScanner is an Android application designed to read Bambu filament NFC ta
 ### Import Dumps
 1. Tap the "IMPORT DUMP" button.
 2. In the file picker, navigate to your dump file and select it.
-3. Dump file must be a valid bin file
+3. Dump file must be a valid bin file.
 
 ### Write Dumps
 1. Tap the "WRITE DUMP" button to begin the write process.
