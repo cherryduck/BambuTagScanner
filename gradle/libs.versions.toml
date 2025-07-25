@@ -1,5 +1,5 @@
 [versions]
-agp = "8.7.1"
+agp = "8.11.1"
 appcompat = "1.7.0"
 bcprovJdk15to18 = "1.72"
 kotlin = "2.0.0"
