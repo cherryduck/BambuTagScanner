@@ -864,7 +864,7 @@ class MainActivity : Activity() {
         }
     }
 
-    // Import a .bin file and prompt for the matching -key.bin file
+    // Import a .bin file
     private fun importBinFile(uri: android.net.Uri) {
         try {
             // Read the .bin file bytes from the selected URI
